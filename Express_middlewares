@@ -1,0 +1,33 @@
+1)Why are we using Express JS ? Any reasons?
+ans: Express is a framework. it provides extra features to node. It parse the code. With use of this we only look our logic not al other unneccessary things..
+2)Install Express Js
+Ans: in terminal run 'npm install --save express'
+3)What are middlewares ?
+Ans: Middlewares means incomin request automatically finalised through bunch of function by Express js. It allows to split code in multiple blocks and it go through that blocks until call response. It goes from on middleware to another withuse of next() function..
+4)What is next used for.
+Ans: allow the request to continue to the next middleware in line
+5)What is res.send used for?
+Ans: to send responses
+6)If i do res.send('<h1> hello to node js </h1>') . What will be the content-type header equal to.
+Ans: text/html
+7)If I do res.send( { key1: value }) . What will be the content-type header equal to.
+Ans: text/html
+8)What does app.listen(3000) do behind the scenes ?
+Ans: It create server and passes itself.
+
+9)// code like youtuber
+
+const express=require('express');
+const app=express();
+// adding middleware
+app.use((req, res, next)=>{
+    console.log('In the middleware!');
+    next();  
+});
+
+app.use((req, res, next)=>{
+    console.log('In another middleware!');
+    res.send('<h1>Hello from express!</h1>')
+});
+
+app.listen(3000);
