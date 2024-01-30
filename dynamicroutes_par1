@@ -1,0 +1,150 @@
+// product_details page views
+
+<%- include('../includes/head.ejs') %>
+    </head>
+
+    <body>
+        <%- include('../includes/navigation.ejs') %>
+        <main class="centered">
+            <h1><%= product.title %></h1>
+            <hr>
+            <div>
+                <img src="<%= product.imageUrl %>" alt="<%= product.title %>">
+            </div>
+            <h2><%= product.price %></h2>
+            <p><%= product.description %></p>
+            <form action="/cart" method="post">
+                <button class="btn" type="submit">Add to Cart</button>
+            </form>
+        </main>
+        <%- include('../includes/end.ejs') %>
+
+  //shop.js controller page
+
+  const Product = require('../models/product');
+
+exports.getProducts = (req, res, next) => {
+  Product.fetchAll(products => {
+    res.render('shop/product-list', {
+      prods: products,
+      pageTitle: 'All Products',
+      path: '/products'
+    });
+  });
+};
+
+exports.getProduct = (req, res, next) => {
+  const prodId = req.params.productId;
+  Product.findById(prodId, product => {
+    res.render('shop/product-detail', {
+      product: product,
+      pageTitle: product.title,
+      path: '/products'
+    });
+  });
+};
+
+exports.getIndex = (req, res, next) => {
+  Product.fetchAll(products => {
+    res.render('shop/index', {
+      prods: products,
+      pageTitle: 'Shop',
+      path: '/'
+    });
+  });
+};
+
+exports.getCart = (req, res, next) => {
+  res.render('shop/cart', {
+    path: '/cart',
+    pageTitle: 'Your Cart'
+  });
+};
+
+exports.getOrders = (req, res, next) => {
+  res.render('shop/orders', {
+    path: '/orders',
+    pageTitle: 'Your Orders'
+  });
+};
+
+exports.getCheckout = (req, res, next) => {
+  res.render('shop/checkout', {
+    path: '/checkout',
+    pageTitle: 'Checkout'
+  });
+};
+//shop.js   routes
+
+const path = require('path');
+
+const express = require('express');
+
+const shopController = require('../controllers/shop');
+
+const router = express.Router();
+
+router.get('/', shopController.getIndex);
+
+router.get('/products', shopController.getProducts);
+
+router.get('/products/:productId', shopController.getProduct);
+
+router.get('/cart', shopController.getCart);
+
+router.get('/orders', shopController.getOrders);
+
+router.get('/checkout', shopController.getCheckout);
+
+module.exports = router;
+
+//product.js  models
+
+const fs = require('fs');
+const path = require('path');
+
+const p = path.join(
+  path.dirname(process.mainModule.filename),
+  'data',
+  'products.json'
+);
+
+const getProductsFromFile = cb => {
+  fs.readFile(p, (err, fileContent) => {
+    if (err) {
+      cb([]);
+    } else {
+      cb(JSON.parse(fileContent));
+    }
+  });
+};
+
+module.exports = class Product {
+  constructor(title, imageUrl, description, price) {
+    this.title = title;
+    this.imageUrl = imageUrl;
+    this.description = description;
+    this.price = price;
+  }
+
+  save() {
+    this.id = Math.random().toString();
+    getProductsFromFile(products => {
+      products.push(this);
+      fs.writeFile(p, JSON.stringify(products), err => {
+        console.log(err);
+      });
+    });
+  }
+
+  static fetchAll(cb) {
+    getProductsFromFile(cb);
+  }
+
+  static findById(id, cb) {
+    getProductsFromFile(products => {
+      const product = products.find(p => p.id === id);
+      cb(product);
+    });
+  }
+};
