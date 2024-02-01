@@ -1,0 +1,164 @@
+// edit and delete
+
+//product.js file in models directory
+const fs = require('fs');
+const path = require('path');
+const rootdir=require('../util/path');
+
+const p = path.join(
+  rootdir,
+  'data',
+  'products.json'
+);
+
+const getProductsFromFile = cb => {
+  fs.readFile(p, (err, fileContent) => {
+    if (err) {
+      cb([]);
+    } else {
+      cb(JSON.parse(fileContent));
+    }
+  });
+};
+
+module.exports = class Product {
+  constructor(id, title, imageUrl, description, price) {
+    this.id=id;
+    this.title = title;
+    this.imageUrl = imageUrl;
+    this.description = description;
+    this.price = price;
+  }
+
+  save() {
+    getProductsFromFile(products => {
+      if(this.id){
+        const existingProductIndex=products.findIndex(prods=>prods.id===this.id);
+        const updatedProducts=[...products];
+        updatedProducts[existingProductIndex]=this;
+        fs.writeFile(p, JSON.stringify(updatedProducts), err => {
+          console.log(err);
+        });
+      } else{
+        this.id=Math.random().toString();
+        products.push(this);
+      fs.writeFile(p, JSON.stringify(products), err => {
+        console.log(err);
+      });
+      }
+      
+    });
+  }
+
+  static fetchAll(cb) {
+    getProductsFromFile(cb);
+  }
+  static findById(id,cb){
+    getProductsFromFile(products=>{
+      const product = products.find(p=>p.id===id);
+      cb(product);
+    })
+  }
+  static deleteproductbyID(id){
+    getProductsFromFile(products=>{
+      const deleteProductIndex=products.findIndex(prods=>prods.id===id);
+      if(deleteProductIndex>-1){
+         products.splice(deleteProductIndex, 1);
+        fs.writeFile(p, JSON.stringify(products), err => {
+          console.log(err);
+        });
+      }
+    })
+  }
+};
+
+
+//admin.js file in controllers directory
+
+const path=require('path');
+const rootdir=require('../util/path');
+const Product=require('../models/product')
+
+exports.getAddProduct= (req, res, next)=>{
+
+  res.sendFile(path.join(rootdir, 'views', '/admin/edit-product.html'));
+};
+
+exports.postAddProduct = (req, res, next) => {
+  const title = req.body.title;
+  const imageUrl = req.body.imageUrl;
+  const price = req.body.price;
+  const description = req.body.description;
+  const product = new Product(null,title, imageUrl, description, price);
+  product.save();
+  res.redirect('/');
+};
+exports.getEditProduct= (req, res, next)=>{
+    const editMode=req.query.edit;   
+    if(!editMode){
+      return res.redirect('/');
+    }
+
+    const prodId = req.body.productId;
+    Product.findById(prodId, product => {
+      if(!product){
+        return res.redirect('/');
+      }
+        console.log(product);
+ });
+  res.sendFile(path.join(rootdir, 'views', '/admin/edit-product.html'));
+
+};
+
+    exports.postEditProduct = (req, res, next) => {
+     const prodId=req.body.productId;
+     const updatedTitle = req.body.title;
+    const updatedImageUrl = req.body.imageUrl;
+    const updatedPrice = req.body.price;
+    const updatedDescription = req.body.description;
+    const updatedProduct = new Product(prodId,updatedTitle, updatedImageUrl, updatedDescription, updatedPrice);
+    updatedProduct.save();
+    res.redirect('/admin/products');
+  };
+  
+
+
+exports.getProducts = (req, res, next) => {
+  Product.fetchAll(products => {
+    res.sendFile(path.join(rootdir, 'views', '/admin/products.html'));
+  });
+};
+
+exports.DeleteProduct= (req, res, next)=>{
+  const prodId = req.params.productId;
+  Product.deleteproductbyID(prodId);
+ return res.redirect('/admin/products');
+
+};
+
+//admin.js in routes directory
+
+const path = require('path');
+
+const express = require('express');
+
+const adminController = require('../controllers/admin');
+
+const router = express.Router();
+
+// /admin/add-product => GET
+router.get('/add-product', adminController.getAddProduct);
+
+// /admin/products => GET
+router.get('/products', adminController.getProducts);
+
+// /admin/add-product => POST
+router.post('/add-product', adminController.postAddProduct);
+
+router.get('/edit-product/:productId', adminController.getEditProduct);
+router.post('/edit-product', adminController.postEditProduct);
+
+router.get('/delete-product/:productId', adminController.DeleteProduct);
+
+module.exports = router;
+
