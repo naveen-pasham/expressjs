@@ -1,0 +1,122 @@
+//shop.js file in routes directory
+
+const path = require('path');
+
+const express = require('express');
+
+const shopController = require('../controllers/shop');
+
+const router = express.Router();
+
+router.get('/', shopController.getIndex);
+
+router.get('/products', shopController.getProducts);
+
+router.get('/products/:productId',shopController.getProduct);
+router.get('/cart', shopController.getCart);
+router.post('/cart', shopController.postCart);
+
+router.get('/orders', shopController.getOrders);
+
+router.get('/checkout', shopController.getCheckout);
+
+module.exports = router;
+
+//shop.js file in controlleres directory
+
+const path=require('path');
+const rootdir=require('../util/path');
+const Product=require('../models/product')
+const Cart=require('../models/cart')
+
+exports.getProducts= (req, res, next)=>{
+  Product.fetchAll(products=>{
+      console.log(products);
+  });
+  res.sendFile(path.join(rootdir ,'views', '/shop/product-list.html'));
+};
+
+exports.getProduct = (req, res, next) => {
+  const prodId= req.params.productId;
+  Product.findById(prodId,product=>{
+    console.log(product);
+
+  })
+  
+  res.sendFile(path.join(rootdir ,'views', '/shop/product-details.html'));
+}
+
+exports.getIndex = (req, res, next) => {
+  Product.fetchAll(products => {
+    console.log(products);
+    });
+    res.sendFile(path.join(rootdir ,'views', '/shop/index.html'));
+};
+
+exports.getCart = (req, res, next) => {
+  res.sendFile(path.join(rootdir ,'views', '/shop/cart.html'));
+};
+
+exports.postCart = (req, res, next) => {
+  const prodId = req.body.productId;
+  Product.findById(prodId, product => {
+    Cart.addProduct(prodId, product.price);
+  });
+  res.redirect('/cart');
+};
+exports.getOrders = (req, res, next) => {
+  res.sendFile(path.join(rootdir ,'views', '/shop/orders.html'));
+};
+
+exports.getCheckout = (req, res, next) => {
+  res.sendFile(path.join(rootdir ,'views', '/shop/checkout.html'));
+};
+
+
+//car.js file in models directory
+
+const fs = require('fs');
+const path = require('path');
+const rootdir=require('../util/path');
+
+const p = path.join(
+  rootdir,
+  'data',
+  'cart.json'
+);
+
+module.exports = class Cart {
+    static addProduct(id, productPrice) {
+      // Fetch the previous cart
+      fs.readFile(p, (err, fileContent) => {
+        let cart = { products: [], totalPrice: 0 };
+        if (!err) {
+          cart = JSON.parse(fileContent);
+        }
+        // Analyze the cart => Find existing product
+        const existingProductIndex = cart.products.findIndex(
+          prod => prod.id === id
+        );
+        const existingProduct = cart.products[existingProductIndex];
+        let updatedProduct;
+        // Add new product/ increase quantity
+        if (existingProduct) {
+          updatedProduct = { ...existingProduct };
+          updatedProduct.qty = updatedProduct.qty + 1;
+          cart.products = [...cart.products];
+          cart.products[existingProductIndex] = updatedProduct;
+        } else {
+          updatedProduct = { id: id, qty: 1 };
+          cart.products = [...cart.products, updatedProduct];
+        }
+        cart.totalPrice = cart.totalPrice + +productPrice;
+        fs.writeFile(p, JSON.stringify(cart), err => {
+          console.log(err);
+        });
+      });
+    }
+  };
+
+// cart.json file
+{"products":[{"id":"12345","qty":2}],"totalPrice":19}
+  
