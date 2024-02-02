@@ -1,0 +1,157 @@
+///product.js file in  models
+
+const db=require('../util/database');
+
+module.exports = class Product {
+  constructor(id, title, imageUrl, description, price) {
+    this.id=id;
+    this.title = title;
+    this.imageUrl = imageUrl;
+    this.description = description;
+    this.price = price;
+  }
+
+  save() {
+      return db.execute('insert into products(title, price, description, imageUrl) values(?,?,?,?)',[this.title,this.price,this.description,this.imageUrl]);
+   
+  }
+
+  static fetchAll() {
+    return db.execute('SELECT * FROM products');
+  }
+  static findById(id){
+    return db.execute('select * from products where products.id=?',[id]);
+  }
+  static deleteproductbyID(id){
+    return db.execute('delete from products where products.id=?',[id]);
+  }
+};
+
+//admin.js in controllers
+
+const path=require('path');
+const rootdir=require('../util/path');
+const Product=require('../models/product')
+
+exports.getAddProduct= (req, res, next)=>{
+
+  res.sendFile(path.join(rootdir, 'views', '/admin/edit-product.html'));
+};
+
+exports.postAddProduct = (req, res, next) => {
+  const title = req.body.title;
+  const imageUrl = req.body.imageUrl;
+  const price = req.body.price;
+  const description = req.body.description;
+  const product = new Product(null,title, imageUrl, description, price);
+  product.save().then(results=>{
+    console.log(results);
+  }).catch(err=>{
+    console.log(err);
+  });
+  res.redirect('/');
+};
+exports.getEditProduct= (req, res, next)=>{
+    const editMode=req.query.edit;    
+    if(!editMode){
+      res.redirect('/');
+    }
+
+    const prodId = req.params.productId;
+    Product.findById(prodId).then(([product])=>{
+      if(!product){
+        return res.redirect('/');
+      }
+      res.sendFile(path.join(rootdir, 'views', '/admin/edit-product.html'));
+      console.log(product[0]);
+    }).catch(err=>console.log(err));
+
+};
+
+    exports.postEditProduct = (req, res, next) => {
+     const prodId=req.body.productId;
+     const updatedTitle = req.body.title;
+    const updatedImageUrl = req.body.imageUrl;
+    const updatedPrice = req.body.price;
+    const updatedDescription = req.body.description;
+    const updatedProduct = new Product(prodId,updatedTitle, updatedImageUrl, updatedDescription, updatedPrice);
+    updatedProduct.save().then(results=>{
+      console.log(results);
+    }).catch(err=>{
+      console.log(err);
+    });
+    res.redirect('/admin/products');
+  };
+  
+exports.getProducts = (req, res, next) => {
+  Product.fetchAll().then(([rows,fieldData]) => {
+    console.log(rows);
+    res.sendFile(path.join(rootdir, 'views', '/admin/products.html'));
+  })
+  .catch(err => {
+    console.log(err);
+  });
+};
+
+exports.DeleteProduct= (req, res, next)=>{
+  const prodId = req.params.productId;
+ 
+  Product.deleteproductbyID(prodId);
+  return res.redirect('/admin/products');
+
+};
+
+// shop.js file in controllers
+
+const path=require('path');
+const rootdir=require('../util/path');
+const Product=require('../models/product')
+const Cart=require('../models/cart')
+
+exports.getProducts= (req, res, next)=>{
+  Product.fetchAll().then(([rows,fieldData]) => {
+    console.log(rows);
+})
+.catch(err => {
+    console.log(err);
+});
+  res.sendFile(path.join(rootdir ,'views', '/shop/product-list.html'));
+};
+
+exports.getProduct = (req, res, next) => {
+  const prodId= req.params.productId;
+  Product.findById(prodId).then(([product])=>{
+    console.log(product[0]);
+  }).catch(err=>console.log(err));
+  
+  res.sendFile(path.join(rootdir ,'views', '/shop/product-details.html'));
+}
+
+exports.getIndex = (req, res, next) => {
+  Product.fetchAll().then(([rows,fieldData]) => {
+    console.log(rows);
+})
+.catch(err => {
+    console.log(err);
+});
+    res.sendFile(path.join(rootdir ,'views', '/shop/index.html'));
+};
+
+exports.getCart = (req, res, next) => {
+  res.sendFile(path.join(rootdir ,'views', '/shop/cart.html'));
+};
+
+exports.postCart = (req, res, next) => {
+ const prodId = req.body.productId;
+ Product.findById(prodId).then(([product])=>{
+  console.log(product[0]);
+}).catch(err=>console.log(err));
+  res.redirect('/cart');
+};
+exports.getOrders = (req, res, next) => {
+  res.sendFile(path.join(rootdir ,'views', '/shop/orders.html'));
+};
+
+exports.getCheckout = (req, res, next) => {
+  res.sendFile(path.join(rootdir ,'views', '/shop/checkout.html'));
+};
