@@ -1,0 +1,421 @@
+// my html page 
+///////////////
+<!DOCTYPE html>
+<html>
+<head>
+ <title>Booking Appointment App</title>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+ <body>
+    <div class="container">
+     <div class="row">
+      <div class="col-md-8 mx-auto">
+       <h1>Booking Appointment App</h1>
+       <form onsubmit="adduser(event)">
+        <input type="hidden" id="userId">
+        <input type="hidden" id="rowIndex">
+        <div class="form-group">
+            <label for="name">Name :</label>
+            <input type="text" id="username" name="username" class="form-control" required>
+           </div>
+        <div class="form-group">
+         <label for="email">EmailId:</label>
+         <input type="text" id="email" name="email" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="phone">Phone Number:</label>
+            <input type="number" id="phonenumber" name="phonenumber" class="form-control" required>
+           </div>
+        <button type="submit" id="addButton" class="btn btn-primary">Add User</button>
+       </form>
+       <br>
+       <table class="table table-striped table-bordered" id="expenseTable">
+        <thead>
+         <tr>
+          <th hidden>User id</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Actions</th>
+         </tr>
+        </thead>
+        <tbody></tbody>
+       </table>
+      </div>
+     </div>
+    </div>
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+    
+    <script>
+    // add user 
+      function adduser(event) {
+     event.preventDefault();
+      const name=document.getElementById('username').value;
+      const email=document.getElementById('email').value;
+      const phonenumber=document.getElementById('phonenumber').value;
+      let userId = document.getElementById('userId').value;
+      const rowIndex=document.getElementById('rowIndex').value;
+    
+      const obj={
+        name,
+        email,
+        phonenumber
+
+      }
+      if (userId === '') {
+        axios.post('http://localhost:2000/user/add-user',obj).then(result=>{
+          showNewUserOnScreen(result.data.Userdetails);
+        }).catch(err => {
+            console.log(err);
+       });
+      }else{
+          updateUser(userId, name, email, phonenumber,rowIndex);
+      }
+        resetForm();
+    }
+
+    window.addEventListener("DOMContentLoaded",  () =>{
+         axios.get('http://localhost:2000/user/get-user').then(response=>{
+          for(var i=0;i<response.data.length;i++){
+            showNewUserOnScreen(response.data[i])
+          }
+        }).catch(err=>console.log(err));
+    
+});
+
+//edit form
+async function editUser(row) {
+  try{
+    const rowIndex = row.rowIndex - 1;
+    const id= row.cells[0].innerHTML;
+    const response= await axios.get(`http://localhost:2000/user/edit-user/${id}`)
+    document.getElementById('username').value=response.data.username;
+    document.getElementById('email').value=response.data.email;
+    document.getElementById('phonenumber').value=response.data.phonenumber;
+    document.getElementById('userId').value = response.data.id;
+    document.getElementById('rowIndex').value = rowIndex;
+    document.getElementById('addButton').innerHTML="Update Blog";  
+      }catch(error){
+        console.log(error);
+      }
+}
+
+
+//update user
+async function updateUser(userId, name, email, phonenumber,rowIndex){
+  try{
+    const obj={
+        userId,
+        name,
+        email,
+        phonenumber,
+
+      }
+    const updatedata=await axios.post(`http://localhost:2000/user/edit-user`,obj)
+  let tableRow =await document.getElementById('expenseTable').getElementsByTagName('tr')[parseInt(rowIndex)+1];
+    tableRow.cells[1].innerHTML = obj.name;
+    tableRow.cells[2].innerHTML = obj.email;
+    tableRow.cells[3].innerHTML = obj.phonenumber;
+
+       }catch(error){
+        console.log(error);
+       }
+}
+
+//delete user
+
+function removeuser(row) {
+    row.parentNode.removeChild(row);
+    const id= row.cells[0].innerHTML;
+      axios.get(`http://localhost:2000/user/delete/${id}`) 
+    }
+
+    //reset form
+
+    function resetForm(){
+     document.getElementById('username').value='';
+    document.getElementById('email').value='';
+    document.getElementById('phonenumber').value='';
+    document.getElementById('userId').value = '';
+    document.getElementById('rowIndex').value = '';
+    document.getElementById('addButton').innerHTML = 'Add User';
+ }
+
+    function showNewUserOnScreen(user){
+    let tableBody =  document.getElementById('expenseTable').getElementsByTagName('tbody')[0];
+          let row = '<tr><td hidden>'+user.id+'</td><td>' + user.username + '</td><td>' + user.email + '</td><td>' + user.phonenumber + '</td><td><button type="button" class="btn btn-sm btn-primary" onclick="editUser(this.parentNode.parentNode)">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="removeuser(this.parentNode.parentNode)">Delete</button></td></tr>';
+          tableBody.insertAdjacentHTML('beforeend', row);
+}
+  </script>
+ </body></html>
+
+
+
+ ////app.js file
+
+ const path = require('path');
+
+const express = require('express');
+const bodyParser = require('body-parser');
+
+const errorController = require('./controllers/error');
+const sequelize=require('./util/database');
+const cors=require('cors');
+
+const app = express();
+
+const userRoutes = require('./routes/user');
+
+app.use(cors());
+app.use(bodyParser.json({ extended: false }));
+
+app.use('/user', userRoutes);
+
+app.use(errorController.get404);
+sequelize
+  .sync()
+  .then(result => {
+    //console.log(result);
+    app.listen(2000);
+  })
+  .catch(err => {
+    console.log(err);
+  });
+
+
+///////user.js file in routes
+
+//////
+const path = require('path');
+
+const express = require('express');
+
+const userController = require('../controllers/user');
+
+const router = express.Router();
+
+router.post('/add-user', userController.postAddUser);
+
+router.get('/get-user', userController.getUsers);
+
+router.get('/edit-user/:UserId', userController.getEditUser);
+router.post('/edit-user', userController.postEditUser);
+
+router.get('/delete/:UserId', userController.DeleteUser);
+
+module.exports = router;
+
+
+///////user.js file in controller
+
+/////
+const path = require('path');
+const rootdir=require('../util/path');
+const User=require('../models/user');
+
+
+
+exports.postAddUser = (req, res, next) => {
+  const username = req.body.name;
+  const email = req.body.email;
+  const phonenumber = req.body.phonenumber;
+  User.create({
+    username: username,
+    email: email,
+    phonenumber: phonenumber
+  })
+    .then(Userdetails => {
+      res.json({Userdetails});
+    })
+    .catch(err => {
+      console.log(err);
+    });
+};
+exports.getEditUser= (req, res, next)=>{
+    const prodId = req.params.UserId;
+    User.findOne({ where: { id: prodId } }).then(user=>{
+      res.json(user);
+    }).catch(err=>console.log(err));
+
+};
+
+    exports.postEditUser = (req, res, next) => {
+      const userid=req.body.userId;
+      const username = req.body.name;
+      const emailId = req.body.email;
+      const phonenumber = req.body.phonenumber;
+    User.findOne({ where: { id: userid } })
+    .then(user => {
+      user.id = userid;
+      user.username = username;
+      user.email = emailId;
+      user.phonenumber = phonenumber;
+      return user.save();
+    })
+    .then(result => {
+      res.json(result);
+    })
+    .catch(err => console.log(err));
+  };
+  
+exports.getUsers = (req, res, next) => {
+  User.findAll().then(users => {
+    res.json(users)
+  })
+  .catch(err => {
+    console.log(err);
+  });
+};
+
+exports.DeleteUser= (req, res, next)=>{
+  const prodId = req.params.UserId;
+  User.findOne({ where: { id: prodId } })
+    .then(user => {
+      return user.destroy();
+    })
+    .then(result => {
+     res.json(result);
+    })
+    .catch(err => console.log(err));
+};
+
+//////user.js file in models
+
+////
+const Sequelize = require('sequelize');
+
+const sequelize = require('../util/database');
+
+const User = sequelize.define('user', {
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    allowNull: false,
+    primaryKey: true
+  },
+  username: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+  email: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+  phonenumber: {
+    type: Sequelize.INTEGER,
+    allowNull: false,
+  },
+});
+
+module.exports = User;
+
+////database.js file in util
+const Sequelize = require('sequelize');
+
+const sequelize = new Sequelize('node-complete', 'root', 'naveen123', {
+  dialect: 'mysql',
+  host: 'localhost'
+});
+
+module.exports = sequelize;
+
+
+
+
+///// product admin.js file like youteber file
+///
+
+const rootdir=require('../util/path');
+const Product=require('../models/product')
+
+exports.getAddProduct= (req, res, next)=>{
+
+  res.sendFile(path.join(rootdir, 'views', '/admin/edit-product.html'));
+};
+
+exports.postAddProduct = (req, res, next) => {
+  const title = req.body.title;
+  const imageUrl = req.body.imageUrl;
+  const price = req.body.price;
+  const description = req.body.description;
+  Product.create({
+    title: title,
+    price: price,
+    imageUrl: imageUrl,
+    description: description
+  })
+    .then(result => {
+      console.log(result);
+      console.log('Created Product');
+      res.redirect('/admin/products');
+    })
+    .catch(err => {
+      console.log(err);
+    });
+};
+exports.getEditProduct= (req, res, next)=>{
+    const editMode=req.query.edit;  
+    if(!editMode){
+      res.redirect('/');
+    }
+
+    const prodId = req.params.productId;
+    Product.findById(prodId).then(product=>{
+      if(!product){
+        return res.redirect('/');
+      }
+      res.sendFile(path.join(rootdir, 'views', '/admin/edit-product.html'));
+      console.log(product);
+    }).catch(err=>console.log(err));
+
+};
+
+    exports.postEditProduct = (req, res, next) => {
+     const prodId=req.body.productId;
+     const updatedTitle = req.body.title;
+    const updatedImageUrl = req.body.imageUrl;
+    const updatedPrice = req.body.price;
+    const updatedDescription = req.body.description;
+    Product.findById(prodId)
+    .then(product => {
+      product.title = updatedTitle;
+      product.price = updatedPrice;
+      product.description = updatedDescription;
+      product.imageUrl = updatedImageUrl;
+      return product.save();
+    })
+    .then(result => {
+      console.log('UPDATED PRODUCT!');
+      res.redirect('/admin/products');
+    })
+    .catch(err => console.log(err));
+  };
+  
+
+
+exports.getProducts = (req, res, next) => {
+  Product.findAll().then(products => {
+    console.log(products);
+    res.sendFile(path.join(rootdir, 'views', '/admin/products.html'));
+  })
+  .catch(err => {
+    console.log(err);
+  });
+};
+
+exports.DeleteProduct= (req, res, next)=>{
+  const prodId = req.params.productId;
+  Product.findById(prodId)
+    .then(product => {
+      return product.destroy();
+    })
+    .then(result => {
+      console.log('DESTROYED PRODUCT');
+      res.redirect('/admin/products');
+    })
+    .catch(err => console.log(err));
+};
+
