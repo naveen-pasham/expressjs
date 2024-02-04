@@ -1,0 +1,321 @@
+///my html page
+
+<!DOCTYPE html>
+<html>
+<head>
+ <title>Expense App</title>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+ <body>
+    <div class="container">
+     <div class="row">
+      <div class="col-md-8 mx-auto">
+       <h1>Expense App</h1>
+       <form onsubmit="addexpense(event)">
+        <input type="hidden" id="Id">
+        <input type="hidden" id="rowIndex">
+        <div class="form-group">
+          <label for="amount">Expense Amount:</label>
+          <input type="number" id="amount" name="amount" class="form-control" required>
+         </div>
+      <div class="form-group">
+       <label for="description">Choos a Description:</label>
+       <input type="text" id="description" name="description" class="form-control" required>
+      </div>
+      <div class="form-group">
+          <label for="category">Choose a Category:</label>
+          <select id="category" class="form-control" name="category" required>
+      <option value="fuel">fuel</option><option value="electricity">electricity</option><option value="movie">movie</option><option value="food">food</option>
+          </select>
+         </div>
+      <button type="submit" id="addButton" class="btn btn-primary">Add Expense</button>
+       </form>
+       <br>
+       <table class="table table-striped table-bordered" id="expenseTable">
+        <thead>
+         <tr>
+          <th hidden>expense id</th>
+          <th>Amount</th>
+          <th>Description</th>
+          <th>Category</th>
+          <th>Actions</th>
+         </tr>
+        </thead>
+        <tbody></tbody>
+       </table>
+      </div>
+     </div>
+    </div>
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+    
+    <script>
+    // add expense 
+      function addexpense(event) {
+     event.preventDefault();
+      const amount=document.getElementById('amount').value;
+      const description=document.getElementById('description').value;
+      const category=document.getElementById('category').value;
+      let Id = document.getElementById('Id').value;
+      const rowIndex=document.getElementById('rowIndex').value;
+    
+      const obj={
+        amount,
+        description,
+        category
+
+      }
+      if (Id === '') {
+        axios.post('http://localhost:2000/expense/add-expense',obj).then(result=>{
+          showNewExpenseOnScreen(result.data.Expensedetails);
+        }).catch(err => {
+            console.log(err);
+       });
+      }else{
+          updateExpense(Id, amount, description, category,rowIndex);
+      }
+        resetForm();
+    }
+
+    window.addEventListener("DOMContentLoaded",  () =>{
+         axios.get('http://localhost:2000/expense/get-expense').then(response=>{
+          for(var i=0;i<response.data.length;i++){
+            showNewExpenseOnScreen(response.data[i])
+          }
+        }).catch(err=>console.log(err));
+    
+});
+
+//edit form
+async function editExpense(row) {
+  try{
+    const rowIndex = row.rowIndex - 1;
+    const id= row.cells[0].innerHTML;
+    const response= await axios.get(`http://localhost:2000/expense/edit-expense/${id}`)
+    document.getElementById('amount').value=response.data.amount;
+    document.getElementById('description').value=response.data.description;
+    document.getElementById('category').value=response.data.category;
+    document.getElementById('Id').value = response.data.id;
+    document.getElementById('rowIndex').value = rowIndex;
+    document.getElementById('addButton').innerHTML="Update Expense";  
+      }catch(error){
+        console.log(error);
+      }
+}
+
+
+//update expense
+async function updateExpense(Id, amount, description, category,rowIndex){
+  try{
+    const obj={
+        Id,
+        amount,
+        description,
+        category
+      }
+    const updatedata=await axios.post(`http://localhost:2000/expense/edit-expense`,obj)
+  let tableRow =await document.getElementById('expenseTable').getElementsByTagName('tr')[parseInt(rowIndex)+1];
+    tableRow.cells[1].innerHTML = obj.amount;
+    tableRow.cells[2].innerHTML = obj.description;
+    tableRow.cells[3].innerHTML = obj.category;
+
+       }catch(error){
+        console.log(error);
+       }
+}
+
+//delete expense
+
+function removeExpense(row) {
+    row.parentNode.removeChild(row);
+    const id= row.cells[0].innerHTML;
+      axios.get(`http://localhost:2000/expense/delete/${id}`) 
+    }
+
+    //reset form
+
+    function resetForm(){
+     document.getElementById('amount').value='';
+    document.getElementById('description').value='';
+    document.getElementById('category').value='';
+    document.getElementById('Id').value = '';
+    document.getElementById('rowIndex').value = '';
+    document.getElementById('addButton').innerHTML = 'Add Expense';
+ }
+
+    function showNewExpenseOnScreen(user){
+    let tableBody =  document.getElementById('expenseTable').getElementsByTagName('tbody')[0];
+          let row = '<tr><td hidden>'+user.id+'</td><td>' + user.amount + '</td><td>' + user.description + '</td><td>' + user.category + '</td><td><button type="button" class="btn btn-sm btn-primary" onclick="editExpense(this.parentNode.parentNode)">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="removeExpense(this.parentNode.parentNode)">Delete</button></td></tr>';
+          tableBody.insertAdjacentHTML('beforeend', row);
+}
+  </script>
+ </body></html>
+
+///app.js file
+
+const path = require('path');
+
+const express = require('express');
+const bodyParser = require('body-parser');
+
+const errorController = require('./controllers/error');
+const sequelize=require('./util/database');
+const cors=require('cors');
+
+const app = express();
+
+const expenseRoutes = require('./routes/expense');
+
+app.use(cors());
+app.use(bodyParser.json({ extended: false }));
+
+app.use('/expense', expenseRoutes);
+
+app.use(errorController.get404);
+sequelize
+  .sync()
+  .then(result => {
+    //console.log(result);
+    app.listen(2000);
+  })
+  .catch(err => {
+    console.log(err);
+  });
+
+
+/////
+///expense.js file in routes
+
+const path = require('path');
+
+const express = require('express');
+
+const expenseController = require('../controllers/expense');
+
+const router = express.Router();
+
+router.post('/add-expense', expenseController.postAddExpense);
+
+router.get('/get-expense', expenseController.getExpenses);
+
+router.get('/edit-expense/:Id', expenseController.getEditExpense);
+router.post('/edit-expense', expenseController.postEditExpense);
+
+router.get('/delete/:Id', expenseController.DeleteExpense);
+
+module.exports = router;
+
+///////
+///expense.js file in controllers
+
+const path = require('path');
+const Expense=require('../models/expense');
+
+
+
+exports.postAddExpense = (req, res, next) => {
+  const amount = req.body.amount;
+  const description = req.body.description;
+  const category = req.body.category;
+  Expense.create({
+    amount: amount,
+    description: description,
+    category: category
+  })
+    .then(Expensedetails => {
+      res.json({Expensedetails});
+    })
+    .catch(err => {
+      console.log(err);
+    });
+};
+exports.getEditExpense= (req, res, next)=>{
+    const prodId = req.params.Id;
+    Expense.findOne({ where: { id: prodId } }).then(expense=>{
+      res.json(expense);
+    }).catch(err=>console.log(err));
+
+};
+
+    exports.postEditExpense = (req, res, next) => {
+      const Id=req.body.Id;
+      const amount = req.body.amount;
+      const description = req.body.description;
+      const category = req.body.category;
+      Expense.findOne({ where: { id: Id } })
+    .then(expense => {
+      expense.id = Id;
+      expense.amount = amount;
+      expense.description = description;
+      expense.category = category;
+      return expense.save();
+    })
+    .then(result => {
+      res.json(result);
+    })
+    .catch(err => console.log(err));
+  };
+  
+exports.getExpenses = (req, res, next) => {
+  Expense.findAll().then(result => {
+    res.json(result)
+  })
+  .catch(err => {
+    console.log(err);
+  });
+};
+
+exports.DeleteExpense= (req, res, next)=>{
+  const prodId = req.params.Id;
+  Expense.findOne({ where: { id: prodId } })
+    .then(expense => {
+      return expense.destroy();
+    })
+    .then(result => {
+     res.json(result);
+    })
+    .catch(err => console.log(err));
+};
+
+//////
+///expense.js file in models
+
+const Sequelize = require('sequelize');
+
+const sequelize = require('../util/database');
+
+const Expense = sequelize.define('expense', {
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    allowNull: false,
+    primaryKey: true
+  },
+  amount: {
+    type: Sequelize.INTEGER,
+    allowNull: false,
+  },
+  description: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+  category: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+});
+
+module.exports = Expense;
+
+////database.js file in util
+
+const Sequelize = require('sequelize');
+
+const sequelize = new Sequelize('node-complete', 'root', 'naveen123', {
+  dialect: 'mysql',
+  host: 'localhost'
+});
+
+module.exports = sequelize;
