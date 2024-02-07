@@ -1,0 +1,363 @@
+///..my html page
+
+<!DOCTYPE html>
+<html>
+<head>
+ <title>playerInfo</title>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+ <style>  
+  .rating {
+display: inline-block;
+position: relative;
+height: 50px;
+line-height: 50px;
+font-size: 50px;
+}
+
+.rating label {
+position: absolute;
+top: 0;
+left: 0;
+height: 100%;
+cursor: pointer;
+}
+
+.rating label:last-child {
+position: static;
+}
+
+.rating label:nth-child(1) {
+z-index: 5;
+}
+
+.rating label:nth-child(2) {
+z-index: 4;
+}
+
+.rating label:nth-child(3) {
+z-index: 3;
+}
+
+.rating label:nth-child(4) {
+z-index: 2;
+}
+
+.rating label:nth-child(5) {
+z-index: 1;
+}
+
+.rating label input {
+position: absolute;
+top: 0;
+left: 0;
+opacity: 0;
+}
+
+.rating label .icon {
+float: left;
+color: transparent;
+}
+
+.rating label:last-child .icon {
+color: #000;
+}
+
+.rating:not(:hover) label input:checked ~ .icon,
+.rating:hover label:hover input ~ .icon {
+color: #09f;
+}
+
+.rating label input:focus:not(:checked) ~ .icon:last-child {
+color: #000;
+text-shadow: 0 0 5px #09f;
+}
+</style>
+</head>
+ <body>
+    <div class="container-fluid" >
+     <div class="row">
+      <div class="col-md-6 mx-auto">
+       <h1>Player Information</h1>
+       <form onsubmit="adduser(event)">
+      
+        <div class="form-group">
+            <label for="username">Company Name :</label>
+            <input type="text" id="username" name="username" class="form-control" required>
+           </div>
+           <div class="form-group">
+            <label for="pros">Pros :</label>
+            <textarea id="pros" name="pros" class="form-control" rows="5" required></textarea>
+           </div>
+           <div class="form-group">
+            <label for="cons">Cons :</label>
+            <textarea id="cons" name="cons" class="form-control" rows="5" required></textarea>
+           </div>
+           <div class="form-group">
+            <label for="rating">Rating</label></div>
+           <div class="rating">
+           <label>
+            <input type="radio" id="stars" name="stars" value="1" />
+            <span class="icon">★</span>
+          </label>
+          <label>
+            <input type="radio" id="stars" name="stars" value="2" />
+            <span class="icon">★</span>
+            <span class="icon">★</span>
+          </label>
+          <label>
+            <input type="radio" id="stars" name="stars" value="3" />
+            <span class="icon">★</span>
+            <span class="icon">★</span>
+            <span class="icon">★</span>   
+          </label>
+          <label>
+            <input type="radio" id="stars" name="stars" value="4" />
+            <span class="icon">★</span>
+            <span class="icon">★</span>
+            <span class="icon">★</span>
+            <span class="icon">★</span>
+          </label>
+          <label>
+            <input type="radio" id="stars" name="stars" value="5" />
+            <span class="icon">★</span>
+            <span class="icon">★</span>
+            <span class="icon">★</span>
+            <span class="icon">★</span>
+            <span class="icon">★</span>
+          </label>
+           </div>
+           
+           <div class="form-group">
+        <button type="submit" id="addButton" class="btn btn-primary">Submit</button>
+           </div>
+       </form>
+       <br>
+      </div>
+     </div></div>
+        <div class="row">
+          <div class="col-md-4 mx-auto">
+        <div class="d-flex justify-content-end">
+
+          <input type="text" class="form-control rounded" placeholder="Search" id="searchuser">
+          <button type="button" class="d-flex justify-content-end btn btn-outline-primary" id="search"  >search</button>
+        </div></div></div>
+        <br>
+      
+    <div class="container" id="usersearch" style="background-color:rgb(158, 154, 154);">
+      <div class="row">
+        <div class="col-md-8 mx-auto">
+      <h1 style="color:red;" >Company Reviews</h1>
+      <h1 id="companyname"></h1>
+      <h1 id="ratingstars"></h1></div></div>
+    </div><br><br>
+    
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    
+    <script>
+    // add user 
+      function adduser(event) {
+     event.preventDefault();
+      const name=document.getElementById('username').value;
+      const pros=document.getElementById('pros').value;
+      const cons=document.getElementById('cons').value;
+      const stars=event.target.stars.value;
+
+      const obj={
+        name,
+        pros,
+        cons,
+        stars
+
+      }
+        axios.post('http://localhost:2000/company/add-review',obj)
+     
+        resetForm();
+    }
+
+    //reset form
+
+    function resetForm(){
+     document.getElementById('username').value='';
+    document.getElementById('pros').value='';
+    document.getElementById('cons').value='';
+    document.getElementById('stars').value='';
+ }
+
+ document.getElementById('search').addEventListener('click',()=>{
+  let rating=0;
+  const name1=document.getElementById('searchuser').value;
+  console.log(name1)
+  axios.get(`http://localhost:2000/company/get-review/${name1}`).then(response=>{
+    console.log(response)
+    for(let i=0;i<response.data.length;i++){
+      if(response.data.length>1){
+        if(response.data.length>1){
+        rating=response.data[i].stars+rating;
+        }
+        rating=rating/2;
+      } else{
+        rating=response.data[i].stars;
+      }
+     
+    }
+    return response;
+        }).then(response=>{
+          console.log(response)
+          for(let i=0;i<response.data.length;i++){
+          showNewUserOnScreen(response.data[i],rating);
+          }
+        });
+ })
+
+    function showNewUserOnScreen(user,rating){
+     
+      let divbody =  document.getElementById('usersearch');
+      document.getElementById('companyname').innerHTML=`Company Name: ${user.name}`;
+      document.getElementById('ratingstars').innerHTML=`Company Rating: ${rating}`;
+
+     
+            let content= ` <div class="row">
+                           <div class="col-md-8 mx-auto">
+                    <h3>pros : ${user.pros}</h3><br>
+                    <h3 >cons : ${user.cons}</h3><br>
+                    <h3 >Rating: ${user.stars}</h3><br><hr>
+                  
+            </div>
+        `;
+        divbody.insertAdjacentHTML('beforeend', content);        
+     
+}
+  </script>
+ </body></html>
+
+//app.js file
+
+const path = require('path');
+
+const express = require('express');
+const bodyParser = require('body-parser');
+
+const errorController = require('./controllers/error');
+const sequelize=require('./util/database');
+const cors=require('cors');
+
+const app = express();
+
+const userRoutes = require('./routes/reviews');
+
+app.use(cors());
+app.use(bodyParser.json({ extended: false }));
+
+app.use('/company', userRoutes);
+
+app.use(errorController.get404);
+sequelize
+  .sync()
+  .then(result => {
+    //console.log(result);
+    app.listen(2000);
+  })
+  .catch(err => {
+    console.log(err);
+  });
+
+
+///reviews.js file in routes
+const path = require('path');
+
+const express = require('express');
+
+const userController = require('../controllers/reviews');
+
+const router = express.Router();
+
+router.post('/add-review', userController.postAddUser);
+
+router.get('/get-review/:name1', userController.getUsers);
+
+module.exports = router;
+
+
+//reviews.js file in controllers
+const path = require('path');
+const Company=require('../models/reviews');
+
+
+
+exports.postAddUser = (req, res, next) => {
+  const name = req.body.name;
+  const pros = req.body.pros;
+  const cons = req.body.cons;
+  const stars = req.body.stars;
+  Company.create({
+    name: name,
+    pros : pros,
+    cons : cons,
+    stars :stars
+  })
+    .then(companydetails => {
+      res.json({companydetails});
+    })
+    .catch(err => {
+      console.log(err);
+    });
+};
+
+exports.getUsers = (req, res, next) => {
+  const name=req.params.name1
+  Company.findAll({ where: { name: name } }).then(users => {
+    res.json(users)
+  })
+  .catch(err => {
+    console.log(err);
+  });
+};
+
+
+
+//reviews.js file in models
+const Sequelize = require('sequelize');
+
+const sequelize = require('../util/database');
+
+const Company = sequelize.define('companyreviews', {
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    allowNull: false,
+    primaryKey: true
+  },
+  name: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+  pros: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+  cons: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+  stars: {
+    type: Sequelize.INTEGER,
+    allowNull: false,
+  }
+});
+
+module.exports = Company;
+
+
+//databse.js file in util
+const Sequelize = require('sequelize');
+
+const sequelize = new Sequelize('node-complete', 'root', 'naveen123', {
+  dialect: 'mysql',
+  host: 'localhost'
+});
+
+module.exports = sequelize;
